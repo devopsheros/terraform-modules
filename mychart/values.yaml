@@ -1,0 +1,144 @@
+mongodb:
+  image: mongo
+  name: mongodb
+  port: 27017
+  readinessProbe:
+    path: /
+    port: 27017
+  livenessProbe:
+    path: /
+    port: 27017
+
+mongoexpress:
+  image: mongo-express
+  name: mongoexpress
+  port: 8081
+  readinessProbe:
+    path: /
+    port: 8081
+  livenessProbe:
+    path: /
+    port: 8081
+
+mongodbCredentials:
+  mongodbusername: admin
+  mongodbpassword: password123
+  host: mongodb-service
+  mongoexpressusername: express
+  mongoexpresspassword: pass
+
+ingress:
+  subdomain: qa
+
+ingress-nginx:
+  controller:
+    service:
+      loadBalancerIP: 104.154.229.112
+
+cert-manager:
+  installCRDs: true
+
+grafana:
+  enabled: false
+
+prometheus:
+  alertmanager:
+    extraArgs:
+      cluster.advertise-address: "[$(POD_IP)]:9093"
+  server:
+    global:
+      scrape_interval: 10s
+      evaluation_interval: 10s
+      scrape_timeout: 5s
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+                - 'app-alertmanager:9093'
+  enabled: true
+  serverFiles:
+    alerting_rules.yml:
+      groups:
+        - name: apiserver-long-requests
+          rules:
+            - alert: Unusaul-long-request
+              expr: apiserver_request_duration_seconds_count > 60
+              labels:
+                severity: warning
+              annotations:
+                summary: "api server took to long"
+                description: "the request took more than one minute"
+        - name: instance-down
+          rules:
+           - alert: InstanceDown
+             expr: up == 0
+             for: 1m
+             annotations:
+               title: 'Instance {{ $labels.instance }} down'
+               description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute.'
+             labels:
+               severity: 'critical'
+        - name: pods-running
+          rules:
+              - alert: application-ready
+                expr: kubelet_running_pods == 27
+                for: 1m
+                labels:
+                  severity: info
+                annotations:
+                  summary: "all the pods are up and running"
+                  description: "all the pods, including the system pods that come with the cluster preinstalled, are running"
+
+    prometheus.yml:
+      scrape_configs:
+        - job_name: 'kubernetes-apiservers'
+          kubernetes_sd_configs:
+            - role: endpoints
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          relabel_configs:
+            - source_labels: [ __meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name ]
+              action: keep
+              regex: default;kubernetes;https
+        - job_name: 'kubernetes-nodes'
+          scheme: https
+          tls_config:
+            ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+          bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+          kubernetes_sd_configs:
+            - role: node
+          relabel_configs:
+            - action: labelmap
+              regex: __meta_kubernetes_node_label_(.+)
+            - target_label: __address__
+              replacement: kubernetes.default.svc:443
+            - source_labels: [ __meta_kubernetes_node_name ]
+              regex: (.+)
+              target_label: __metrics_path__
+              replacement: /api/v1/nodes/${1}/proxy/metrics
+        - job_name: 'kubernetes-pods'
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_scrape ]
+              action: keep
+              regex: true
+            - source_labels: [ __meta_kubernetes_pod_annotation_prometheus_io_path ]
+              action: replace
+              target_label: __metrics_path__
+              regex: (.+)
+            - source_labels: [ __address__, __meta_kubernetes_pod_annotation_prometheus_io_port ]
+              action: replace
+              regex: ([^:]+)(?::\d+)?;(\d+)
+              replacement: $1:$2
+              target_label: __address__
+            - action: labelmap
+              regex: __meta_kubernetes_pod_label_(.+)
+            - source_labels: [ __meta_kubernetes_namespace ]
+              action: replace
+              target_label: kubernetes_namespace
+            - source_labels: [ __meta_kubernetes_pod_name ]
+              action: replace
+              target_label: kubernetes_pod_name

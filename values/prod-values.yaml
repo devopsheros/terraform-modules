@@ -1,0 +1,15 @@
+mongodbCredentials:
+  mongodbusername: admin
+  mongodbpassword: password123
+  host: mongodb-service
+  mongoexpressusername: express-prod
+  mongoexpresspassword: prodpass
+
+ingress:
+  subdomain: prod
+
+ingress-nginx:
+  controller:
+    service:
+      loadBalancerIP: 34.70.12.107
+

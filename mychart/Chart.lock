@@ -1,0 +1,15 @@
+dependencies:
+- name: ingress-nginx
+  repository: https://kubernetes.github.io/ingress-nginx
+  version: 4.8.1
+- name: cert-manager
+  repository: https://charts.jetstack.io
+  version: v1.13.1
+- name: prometheus
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 25.1.0
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 6.60.6
+digest: sha256:91ccc05bd0bf11bf6a7d7953de1019193313c79331796972cd45e81c8e5026a9
+generated: "2023-10-16T16:36:16.2012337+03:00"

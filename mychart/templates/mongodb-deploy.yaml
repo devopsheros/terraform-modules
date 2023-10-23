@@ -1,0 +1,70 @@
+{{- if eq .Values.grafana.enabled false -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.mongodb.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.mongodb.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mongodb.name }}
+    spec:
+      containers:
+      - name: {{ .Values.mongodb.name }}
+        image: {{ .Values.mongodb.image }}
+        ports:
+        - containerPort: {{ .Values.mongodb.port }}
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-mongodb-credentials
+              key: mongodb-username
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-mongodb-credentials
+              key: mongodb-password
+        #readinessProbe:
+        #  httpGet:
+        #    path: /
+        #    port: {{ .Values.mongodb.port }}
+        #  initialDelaySeconds: 15
+        #  periodSeconds: 10
+        #livenessProbe:
+        #  httpGet:
+        #    path: /
+        #    port: {{ .Values.mongodb.port }}
+        #  initialDelaySeconds: 15
+        #  periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.mongodb.name }}-service
+spec:
+  selector:
+    app: {{ .Values.mongodb.name }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.mongodb.port }}
+      targetPort: {{ .Values.mongodb.port }}
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-mongodb-credentials
+type: Opaque
+stringData:
+  mongodb-username: {{ .Values.mongodbCredentials.mongodbusername }}
+  mongodb-password: {{ .Values.mongodbCredentials.mongodbpassword }}
+  server: {{ .Values.mongodbCredentials.host }}
+  mongo-express-username: {{ .Values.mongodbCredentials.mongoexpressusername }}
+  mongo-express-password: {{ .Values.mongodbCredentials.mongoexpresspassword }}
+
+{{- end }}

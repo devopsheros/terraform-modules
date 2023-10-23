@@ -1,0 +1,37 @@
+{{- if eq .Values.grafana.enabled false -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.mongoexpress.name }}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/issuer: mongo-express-issuer
+spec:
+  rules:
+  - host: {{ .Values.ingress.subdomain }}.devopsheros.com  # Set your desired host
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.mongoexpress.name }}
+            port:
+              number: {{ .Values.mongoexpress.port }}
+
+  - host: prom-{{ .Values.ingress.subdomain }}.devopsheros.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-prometheus-server
+            port:
+              number: 80
+  tls:
+    - hosts:
+        - {{ .Values.ingress.subdomain }}.devopsheros.com
+        - prom-{{ .Values.ingress.subdomain }}.devopsheros.com
+      secretName: mongo-express-certificate
+{{- end }}
